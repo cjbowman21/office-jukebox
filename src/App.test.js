@@ -1,8 +1,20 @@
 import { render, screen } from '@testing-library/react';
-import App from './App';
+import React from 'react';
 
-test('renders learn react link', () => {
+// Mock axios to avoid importing the ESM module during tests
+jest.mock('axios', () => ({
+  get: jest.fn(),
+  post: jest.fn(),
+}));
+
+// Require App after mocks to prevent axios ESM parsing issues
+const App = require('./App').default;
+
+test('renders header and connect message', () => {
   render(<App />);
-  const linkElement = screen.getByText(/learn react/i);
-  expect(linkElement).toBeInTheDocument();
+  expect(screen.getByText(/office jukebox/i)).toBeInTheDocument();
+  expect(
+    screen.getByText(/connect your spotify account to view the queue/i)
+  ).toBeInTheDocument();
 });
+
