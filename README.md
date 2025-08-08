@@ -42,9 +42,12 @@ Create a `.env` file or set variables in your host:
 ```bash
 PORT=5000
 NODE_ENV=production
+REACT_APP_REDIRECT_URI=http://localhost:3000/callback
 # CLIENT_ID=your-client-id
 # CLIENT_SECRET=your-secret
 ```
+
+- `REACT_APP_REDIRECT_URI` – OAuth callback URL for the React app.
 
 ## Reverse Proxy with Windows Authentication
 
