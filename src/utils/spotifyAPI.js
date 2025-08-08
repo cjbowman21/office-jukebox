@@ -1,5 +1,9 @@
 import axios from 'axios';
 
+const api = axios.create({
+  baseURL: process.env.REACT_APP_API_URL,
+});
+
 const unauthorized = { unauthorized: true };
 
 const handleUnauthorized = (error) => {
@@ -11,7 +15,7 @@ const handleUnauthorized = (error) => {
 
 export const getQueue = async () => {
   try {
-    const response = await axios.get('/api/queue');
+    const response = await api.get('/api/queue');
     return response.data;
   } catch (error) {
     try {
@@ -25,7 +29,7 @@ export const getQueue = async () => {
 
 export const searchTracks = async (query) => {
   try {
-    const response = await axios.get('/api/search', { params: { q: query } });
+    const response = await api.get('/api/search', { params: { q: query } });
     return response.data.tracks || response.data;
   } catch (error) {
     const result = handleUnauthorized(error);
@@ -39,7 +43,7 @@ export const searchTracks = async (query) => {
 
 export const addToQueue = async (trackUri) => {
   try {
-    await axios.post('/api/queue', { uri: trackUri });
+    await api.post('/api/queue', { uri: trackUri });
     return true;
   } catch (error) {
     const result = handleUnauthorized(error);

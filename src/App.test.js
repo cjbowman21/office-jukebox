@@ -2,10 +2,10 @@ import { render, screen } from '@testing-library/react';
 import React from 'react';
 
 // Mock axios to avoid importing the ESM module during tests
-jest.mock('axios', () => ({
-  get: jest.fn(),
-  post: jest.fn(),
-}));
+jest.mock('axios', () => {
+  const instance = { get: jest.fn(), post: jest.fn() };
+  return { create: jest.fn(() => instance), ...instance };
+});
 
 beforeEach(() => {
   global.fetch = jest.fn(() =>
