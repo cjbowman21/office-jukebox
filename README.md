@@ -25,13 +25,24 @@ Express server with React frontend.
 ## Development
 
 1. Install dependencies: `npm install`.
-2. Start both servers: `npm run dev`.
+2. Create a `.env` file with the backend URL:
+
+   ```bash
+   REACT_APP_API_URL=http://localhost:5000
+   ```
+
+3. Start both servers: `npm run dev`.
    - React runs on [http://localhost:3000](http://localhost:3000).
-   - API requests are proxied to Express on [http://localhost:5000](http://localhost:5000).
+   - Express listens on [http://localhost:5000](http://localhost:5000).
 
 ## Production
 
-1. Build the React bundle: `npm run build`.
+1. Set `REACT_APP_API_URL` to the production backend before building, for example:
+
+   ```bash
+   REACT_APP_API_URL=https://api.example.com npm run build
+   ```
+
 2. Start the server: `npm start` (serves static files from `build/`).
 3. A `Procfile` is provided for platforms like Heroku and runs `npm run build && node server.js`.
 
@@ -42,6 +53,7 @@ Create a `.env` file or set variables in your host:
 ```bash
 PORT=5000
 NODE_ENV=production
+# REACT_APP_API_URL=http://localhost:5000
 # CLIENT_ID=your-client-id
 # CLIENT_SECRET=your-secret
 ```
