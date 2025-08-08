@@ -1,3 +1,23 @@
+# Office Jukebox
+
+This project contains a React frontend and an Express server for an office jukebox.
+
+## Server
+
+The Express app lives in `server/index.js` and is protected with Windows authentication via [`passport-windowsauth`](https://www.npmjs.com/package/passport-windowsauth). The middleware authenticates users against Active Directory and the authenticated Windows profile is available on `req.user` for all API requests.
+
+### Spotify credentials
+
+The server interacts with the Spotify Web API using a shared office account. Configure the following environment variables before starting the server:
+
+- `SPOTIFY_CLIENT_ID`
+- `SPOTIFY_CLIENT_SECRET`
+- `SPOTIFY_REFRESH_TOKEN` – a long-lived refresh token for the office Spotify account
+
+These values are used to generate an access token, which is automatically refreshed when it expires.
+
+---
+
 # Getting Started with Create React App
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
