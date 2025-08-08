@@ -7,6 +7,7 @@ if (!baseURL) {
 
 const api = axios.create({
   baseURL: baseURL || window.location.origin,
+  withCredentials: true,
 });
 
 const unauthorized = { unauthorized: true };
