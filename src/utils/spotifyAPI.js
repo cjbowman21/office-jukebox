@@ -1,7 +1,12 @@
 import axios from 'axios';
 
+const baseURL = process.env.REACT_APP_API_URL;
+if (!baseURL) {
+  console.warn('REACT_APP_API_URL is not set; falling back to current origin.');
+}
+
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL,
+  baseURL: baseURL || window.location.origin,
 });
 
 const unauthorized = { unauthorized: true };
