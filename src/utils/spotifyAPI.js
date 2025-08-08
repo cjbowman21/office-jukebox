@@ -5,6 +5,7 @@ const api = axios.create({
 });
 
 const unauthorized = { unauthorized: true };
+const networkError = { networkError: true };
 
 const handleUnauthorized = (error) => {
   if (error.response && (error.response.status === 401 || error.response.status === 403)) {
@@ -18,6 +19,10 @@ export const getQueue = async () => {
     const response = await api.get('/api/queue');
     return response.data;
   } catch (error) {
+    if (!error.response) {
+      console.error('Network error fetching queue:', error);
+      return networkError;
+    }
     try {
       return handleUnauthorized(error);
     } catch (err) {

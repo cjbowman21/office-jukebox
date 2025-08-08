@@ -13,6 +13,8 @@ const QueueViewer = () => {
         const queueData = await getQueue();
         if (queueData && queueData.unauthorized) {
           setError('Session expired. Please reauthenticate with Windows.');
+        } else if (queueData && queueData.networkError) {
+          setError('Network error. Please check your connection and try again.');
         } else if (queueData) {
           setQueue(queueData);
         } else {
