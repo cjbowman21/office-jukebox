@@ -4,7 +4,7 @@ This project contains a React frontend and an Express server for an office jukeb
 
 ## Server
 
-The Express app lives in `server/index.js` and is protected with Windows authentication via [`passport-windowsauth`](https://www.npmjs.com/package/passport-windowsauth). The middleware authenticates users against Active Directory and the authenticated Windows profile is available on `req.user` for all API requests.
+The Express app lives in `server/index.js` and is protected with Windows authentication via [`express-ntlm`](https://www.npmjs.com/package/express-ntlm). The middleware authenticates users against Active Directory and exposes the authenticated profile on `req.ntlm` for all API requests.
 
 ### Spotify credentials
 
