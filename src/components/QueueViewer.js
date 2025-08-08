@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getQueue } from '../utils/spotifyAPI';
 
-const QueueViewer = ({ token }) => {
+const QueueViewer = () => {
   const [queue, setQueue] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -10,8 +10,10 @@ const QueueViewer = ({ token }) => {
   useEffect(() => {
     const fetchQueue = async () => {
       try {
-        const queueData = await getQueue(token);
-        if (queueData) {
+        const queueData = await getQueue();
+        if (queueData && queueData.unauthorized) {
+          setError('Session expired. Please reauthenticate with Windows.');
+        } else if (queueData) {
           setQueue(queueData);
         } else {
           setError('Failed to load queue. Make sure Spotify is playing.');
@@ -23,10 +25,8 @@ const QueueViewer = ({ token }) => {
       }
     };
 
-    if (token) {
-      fetchQueue();
-    }
-  }, [token, lastUpdated]);
+    fetchQueue();
+  }, [lastUpdated]);
 
   if (loading) {
     return <div className="loading">Loading your queue...</div>;

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { searchTracks } from '../utils/spotifyAPI';
 
-const AutoCompleteSearch = ({ token, onAddToQueue }) => {
+const AutoCompleteSearch = ({ onAddToQueue }) => {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -22,9 +22,15 @@ const AutoCompleteSearch = ({ token, onAddToQueue }) => {
     
     const delayDebounce = setTimeout(async () => {
       try {
-        const searchResults = await searchTracks(query, token);
-        setResults(searchResults);
-        setActiveIndex(-1);
+        const searchResults = await searchTracks(query);
+        if (searchResults && searchResults.unauthorized) {
+          alert('Session expired. Please reauthenticate with Windows.');
+          setResults([]);
+          setShowResults(false);
+        } else {
+          setResults(searchResults);
+          setActiveIndex(-1);
+        }
       } catch (error) {
         console.error('Search error:', error);
         setResults([]);
@@ -34,7 +40,7 @@ const AutoCompleteSearch = ({ token, onAddToQueue }) => {
     }, 300);
 
     return () => clearTimeout(delayDebounce);
-  }, [query, token]);
+  }, [query]);
 
   // Handle keyboard navigation
   useEffect(() => {

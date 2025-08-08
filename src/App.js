@@ -1,59 +1,57 @@
 import React, { useState, useEffect } from 'react';
-import { handleCallback, getAccessToken, login } from './SpotifyAuth.js';
 import MainView from './components/MainView';
 import './App.css';
 
 function App() {
-  const [token, setToken] = useState(null);
-  const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    console.log("Current token:", token);
-    console.log("URL hash:", window.location.hash);
-    // Check for token in URL hash on initial load
-    const hash = window.location.hash;
-    if (hash) {
-      const token = hash.substring(1).split("&").find(elem => elem.startsWith("access_token")).split("=")[1];
-      if (token) {
-        localStorage.setItem('spotify_access_token', token);
-        setToken(token);
-        // Clear hash from URL
-        window.location.hash = "";
+    const checkAuth = async () => {
+      try {
+        const response = await fetch('/api/me');
+        if (response.ok) {
+          setIsAuthenticated(true);
+        } else if (response.status === 401 || response.status === 403) {
+          setError('Session expired. Please reauthenticate with Windows.');
+        } else {
+          setError('Unable to verify session.');
+        }
+      } catch (err) {
+        setError('Unable to verify session.');
+      } finally {
+        setLoading(false);
       }
-    }
+    };
 
-    // Check localStorage for existing token
-    const storedToken = localStorage.getItem('spotify_access_token');
-    if (storedToken) {
-      setToken(storedToken);
-    }
+    checkAuth();
   }, []);
 
-  const handleLogin = () => {
-    login();
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem('spotify_access_token');
-    setToken(null);
-  };
+  if (loading) {
+    return (
+      <div className="App">
+        <header>
+          <h1>Office Jukebox</h1>
+        </header>
+        <main>
+          <p>Loading...</p>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="App">
       <header>
         <h1>Office Jukebox</h1>
-        {token ? (
-          <button onClick={handleLogout}>Logout</button>
-        ) : (
-          <button onClick={handleLogin}>Connect Spotify</button>
-        )}
       </header>
 
       <main>
-        {token ? (
-          <MainView token={token} />
+        {isAuthenticated ? (
+          <MainView />
         ) : (
-          <p>Connect your Spotify account to view the queue</p>
+          <p>{error || 'Please authenticate with Windows to continue.'}</p>
         )}
       </main>
     </div>
