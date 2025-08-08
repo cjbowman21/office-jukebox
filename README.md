@@ -31,6 +31,8 @@ Express server with React frontend.
    REACT_APP_API_URL=http://localhost:5000
    ```
 
+   If `REACT_APP_API_URL` is not set, the frontend logs a warning and uses the current browser origin for API requests.
+
 3. Start both servers: `npm run dev`.
    - React runs on [http://localhost:3000](http://localhost:3000).
    - Express listens on [http://localhost:5000](http://localhost:5000).
@@ -58,6 +60,8 @@ NODE_ENV=production
 # CLIENT_ID=your-client-id
 # CLIENT_SECRET=your-secret
 ```
+
+If `REACT_APP_API_URL` is omitted, API calls fall back to `window.location.origin`.
 
 - `REACT_APP_REDIRECT_URI` – OAuth callback URL for the React app.
 
