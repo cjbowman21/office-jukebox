@@ -45,7 +45,7 @@ Express server with React frontend.
    ```
 
 2. Start the server: `npm start` (serves static files from `build/`).
-3. A `Procfile` is provided for platforms like Heroku and runs `npm run build && node server.js`.
+3. A `Procfile` is provided for platforms like Heroku and runs `npm run build && node server/index.js`.
 
 ## Environment Variables
 

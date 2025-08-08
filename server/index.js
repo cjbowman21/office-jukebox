@@ -2,6 +2,7 @@ const express = require('express');
 const passport = require('passport');
 const WindowsStrategy = require('passport-windowsauth');
 const axios = require('axios');
+const path = require('path');
 
 const app = express();
 app.use(express.json());
@@ -81,6 +82,16 @@ app.post('/api/add-to-queue', auth, async (req, res) => {
     res.status(500).json({ error: 'Spotify add to queue failed' });
   }
 });
+
+
+if (process.env.NODE_ENV === 'production') {
+  const buildPath = path.join(__dirname, '../build');
+  app.use(express.static(buildPath));
+
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(buildPath, 'index.html'));
+  });
+}
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
