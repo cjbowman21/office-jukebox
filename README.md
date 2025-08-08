@@ -34,6 +34,7 @@ Express server with React frontend.
 3. Start both servers: `npm run dev`.
    - React runs on [http://localhost:3000](http://localhost:3000).
    - Express listens on [http://localhost:5000](http://localhost:5000).
+   - If you need a different backend port, update both the port in the `dev` script and the `proxy` value in `package.json` so they stay in sync.
 
 ## Production
 
