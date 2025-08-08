@@ -44,6 +44,14 @@ async function spotifyRequest(method, url, options = {}) {
   return axios({ method, url, ...options, headers });
 }
 
+app.get('/api/me', auth, (req, res) => {
+  try {
+    res.json(req.user);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to retrieve user' });
+  }
+});
+
 app.get('/api/search', auth, async (req, res) => {
   const q = req.query.q;
   if (!q) {
