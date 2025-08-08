@@ -43,7 +43,7 @@ export const searchTracks = async (query) => {
 
 export const addToQueue = async (trackUri) => {
   try {
-    await api.post('/api/queue', { uri: trackUri });
+    await api.post('/api/add-to-queue', { uri: trackUri });
     return true;
   } catch (error) {
     const result = handleUnauthorized(error);
