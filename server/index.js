@@ -11,8 +11,8 @@ app.use(cors({ origin: clientOrigin, credentials: true }));
 
 app.use(ntlm({
   debug: console.log,
-  domain: 'YOUR_DOMAIN',
-  domaincontroller: 'ldap://dc.yourdomain.local'
+  domain: process.env.NTLM_DOMAIN,
+  domaincontroller: process.env.NTLM_DC
 }));
 
 const ensureAuthenticated = (req, res, next) => {
