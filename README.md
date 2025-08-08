@@ -58,6 +58,8 @@ NODE_ENV=production
 # CLIENT_SECRET=your-secret
 ```
 
+- `REACT_APP_REDIRECT_URI` – OAuth callback URL for the React app.
+
 ## Reverse Proxy with Windows Authentication
 
 When deploying behind IIS, Nginx, or another reverse proxy, enable Windows Authentication on the proxy and forward requests to the Node server:
