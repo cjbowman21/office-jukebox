@@ -6,6 +6,8 @@ This project contains a React frontend and an Express server for an office jukeb
 
 The Express app lives in `server/index.js` and is protected with Windows authentication via [`express-ntlm`](https://www.npmjs.com/package/express-ntlm). The middleware authenticates users against Active Directory and exposes the authenticated profile on `req.ntlm` for all API requests.
 
+Set `NTLM_DOMAIN` to your Active Directory domain and `NTLM_DC` to the LDAP URL of a domain controller.
+
 ### Spotify credentials
 
 The server interacts with the Spotify Web API using a shared office account. Configure the following environment variables before starting the server:
@@ -59,6 +61,8 @@ NODE_ENV=production
 # REACT_APP_API_URL=http://localhost:5000
 # CLIENT_ID=your-client-id
 # CLIENT_SECRET=your-secret
+# NTLM_DOMAIN=YOUR_DOMAIN
+# NTLM_DC=ldap://dc.yourdomain.local
 ```
 
 If `REACT_APP_API_URL` is omitted, API calls fall back to `window.location.origin`.
