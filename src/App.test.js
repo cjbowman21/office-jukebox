@@ -7,14 +7,24 @@ jest.mock('axios', () => ({
   post: jest.fn(),
 }));
 
+beforeEach(() => {
+  global.fetch = jest.fn(() =>
+    Promise.resolve({ ok: false, status: 401 })
+  );
+});
+
+afterEach(() => {
+  jest.resetAllMocks();
+});
+
 // Require App after mocks to prevent axios ESM parsing issues
 const App = require('./App').default;
 
-test('renders header and connect message', () => {
+test('renders header and authentication prompt', async () => {
   render(<App />);
   expect(screen.getByText(/office jukebox/i)).toBeInTheDocument();
   expect(
-    screen.getByText(/connect your spotify account to view the queue/i)
+    await screen.findByText(/reauthenticate with windows/i)
   ).toBeInTheDocument();
 });
 

@@ -3,15 +3,17 @@ import AutoCompleteSearch from './AutoCompleteSearch';
 import QueueViewer from './QueueViewer';
 import { addToQueue } from '../utils/spotifyAPI';
 
-const MainView = ({ token }) => {
+const MainView = () => {
   const [notification, setNotification] = useState(null);
 
   const handleAddToQueue = async (trackUri) => {
-    const result = await addToQueue(trackUri, token);
-    
+    const result = await addToQueue(trackUri);
+
     if (result === true) {
       setNotification('Song added to queue!');
       setTimeout(() => setNotification(null), 3000);
+    } else if (result && result.unauthorized) {
+      setNotification('Session expired. Please reauthenticate with Windows.');
     } else if (result && result.error) {
       setNotification(result.error);
     } else {
@@ -26,16 +28,13 @@ const MainView = ({ token }) => {
           {notification}
         </div>
       )}
-      
+
       <div className="search-section">
-        <AutoCompleteSearch 
-          token={token} 
-          onAddToQueue={handleAddToQueue} 
-        />
+        <AutoCompleteSearch onAddToQueue={handleAddToQueue} />
       </div>
-      
+
       <div className="content-container">
-        <QueueViewer token={token} />
+        <QueueViewer />
       </div>
     </div>
   );
