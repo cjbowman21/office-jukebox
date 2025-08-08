@@ -3,9 +3,12 @@ const passport = require('passport');
 const WindowsStrategy = require('passport-windowsauth');
 const axios = require('axios');
 const path = require('path');
+const cors = require('cors');
 
 const app = express();
 app.use(express.json());
+const clientOrigin = process.env.CLIENT_ORIGIN || 'http://localhost:3000';
+app.use(cors({ origin: clientOrigin, credentials: true }));
 
 // Configure Windows authentication using passport-windowsauth
 passport.use(new WindowsStrategy({
