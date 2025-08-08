@@ -1,6 +1,5 @@
 const express = require('express');
-const passport = require('passport');
-const WindowsStrategy = require('passport-windowsauth');
+const ntlm = require('express-ntlm');
 const axios = require('axios');
 const path = require('path');
 const cors = require('cors');
@@ -10,14 +9,18 @@ app.use(express.json());
 const clientOrigin = process.env.CLIENT_ORIGIN || 'http://localhost:3000';
 app.use(cors({ origin: clientOrigin, credentials: true }));
 
-// Configure Windows authentication using passport-windowsauth
-passport.use(new WindowsStrategy({
-  integrated: true
-}, function(profile, done) {
-  return done(null, profile);
+app.use(ntlm({
+  debug: console.log,
+  domain: 'YOUR_DOMAIN',
+  domaincontroller: 'ldap://dc.yourdomain.local'
 }));
-app.use(passport.initialize());
-const auth = passport.authenticate('WindowsAuthentication', { session: false });
+
+const ensureAuthenticated = (req, res, next) => {
+  if (!req.ntlm || !req.ntlm.Authenticated) {
+    return res.status(401).send('Unauthorized');
+  }
+  next();
+};
 
 let accessToken = null;
 let tokenExpiresAt = 0;
@@ -47,15 +50,16 @@ async function spotifyRequest(method, url, options = {}) {
   return axios({ method, url, ...options, headers });
 }
 
-app.get('/api/me', auth, (req, res) => {
+app.get('/api/me', ensureAuthenticated, (req, res) => {
   try {
-    res.json(req.user);
+    const { UserName, DomainName, Workstation } = req.ntlm;
+    res.json({ username: UserName, domain: DomainName, workstation: Workstation });
   } catch (err) {
     res.status(500).json({ error: 'Failed to retrieve user' });
   }
 });
 
-app.get('/api/search', auth, async (req, res) => {
+app.get('/api/search', ensureAuthenticated, async (req, res) => {
   const q = req.query.q;
   if (!q) {
     return res.status(400).json({ error: 'Missing q parameter' });
@@ -70,7 +74,7 @@ app.get('/api/search', auth, async (req, res) => {
   }
 });
 
-app.get('/api/queue', auth, async (req, res) => {
+app.get('/api/queue', ensureAuthenticated, async (req, res) => {
   try {
     const response = await spotifyRequest('get', 'https://api.spotify.com/v1/me/player/queue');
     res.json(response.data);
@@ -79,7 +83,7 @@ app.get('/api/queue', auth, async (req, res) => {
   }
 });
 
-app.post('/api/add-to-queue', auth, async (req, res) => {
+app.post('/api/add-to-queue', ensureAuthenticated, async (req, res) => {
   const { uri } = req.body;
   if (!uri) {
     return res.status(400).json({ error: 'Missing uri in body' });
