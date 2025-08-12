@@ -47,7 +47,12 @@ async function getAccessToken() {
 async function spotifyRequest(method, url, options = {}) {
   const token = await getAccessToken();
   const headers = { ...options.headers, Authorization: `Bearer ${token}` };
-  return axios({ method, url, ...options, headers });
+  try {
+    return await axios({ method, url, ...options, headers });
+  } catch (err) {
+    console.error('Spotify API request failed:', err.response?.status, err.response?.data);
+    throw err;
+  }
 }
 
 app.get('/api/me', ensureAuthenticated, (req, res) => {
@@ -79,6 +84,7 @@ app.get('/api/queue', ensureAuthenticated, async (req, res) => {
     const response = await spotifyRequest('get', 'https://api.spotify.com/v1/me/player/queue');
     res.json(response.data);
   } catch (err) {
+    console.error('Error fetching Spotify queue:', err.response?.status, err.response?.data);
     res.status(500).json({ error: 'Spotify queue fetch failed' });
   }
 });

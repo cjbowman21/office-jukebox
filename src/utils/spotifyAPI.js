@@ -26,13 +26,13 @@ export const getQueue = async () => {
     return response.data;
   } catch (error) {
     if (!error.response) {
-      console.error('Network error fetching queue:', error);
+      console.error('Network error fetching queue:', error, error.response?.data);
       return networkError;
     }
     try {
       return handleUnauthorized(error);
     } catch (err) {
-      console.error('Error fetching queue:', err);
+      console.error('Error fetching queue:', err, err.response?.data);
       return null;
     }
   }
