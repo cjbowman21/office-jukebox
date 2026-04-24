@@ -59,6 +59,14 @@ export const getPlayerState = async () => {
   return response.data;
 };
 
+export const getSongInfo = async (track) => {
+  const response = await request(
+    () => api.post('/api/song-info', { track }),
+    'Failed to load song details.'
+  );
+  return response.data;
+};
+
 export const searchTracks = async (query) => {
   const response = await request(
     () => api.get('/api/search', { params: { q: query } }),

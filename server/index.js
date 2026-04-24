@@ -6,6 +6,7 @@ const axios = require('axios');
 const path = require('path');
 const cors = require('cors');
 const fs = require('fs/promises');
+const { createSongInfoClient } = require('./songInfo');
 
 const SPOTIFY_API_BASE = 'https://api.spotify.com/v1';
 const SPOTIFY_TOKEN_URL = 'https://accounts.spotify.com/api/token';
@@ -258,6 +259,7 @@ function createApp({
   serveStatic = env.NODE_ENV === 'production',
   settingsStore = createSettingsStore(env.SETTINGS_FILE || DEFAULT_SETTINGS_PATH),
   spotifyClient = createSpotifyClient({ env }),
+  songInfoClient = createSongInfoClient({ axiosInstance: axios, env }),
 } = {}) {
   const app = express();
   const clientOrigin = env.CLIENT_ORIGIN || 'http://localhost:5173';
@@ -301,6 +303,24 @@ function createApp({
       return res.json(data);
     } catch (err) {
       return routeError(res, err, 'SPOTIFY_PLAYER_FAILED', 'Spotify playback state fetch failed.');
+    }
+  });
+
+  app.post('/api/song-info', ensureAuthenticated, async (req, res) => {
+    const { track } = req.body;
+
+    if (!track || typeof track !== 'object') {
+      return sendApiError(res, 400, 'MISSING_TRACK', 'Missing track in body.');
+    }
+
+    try {
+      const data = await songInfoClient.getSongInfo(track);
+      return res.json(data);
+    } catch (err) {
+      if (err.message === 'Track name and artist are required.') {
+        return sendApiError(res, 400, 'INVALID_TRACK', err.message);
+      }
+      return routeError(res, err, 'SONG_INFO_FAILED', 'Song information lookup failed.');
     }
   });
 
@@ -448,6 +468,7 @@ module.exports = {
   ApiError,
   createApp,
   createNtlmMiddleware,
+  createSongInfoClient,
   createSettingsStore,
   createSpotifyClient,
   ensureAuthenticated,

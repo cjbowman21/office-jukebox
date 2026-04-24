@@ -44,6 +44,22 @@ const createSpotifyStub = () => ({
   setVolume: vi.fn().mockResolvedValue(),
 });
 
+const createSongInfoStub = () => ({
+  getSongInfo: vi.fn().mockResolvedValue({
+    cards: [
+      {
+        id: 'artist',
+        title: 'Artist Background',
+        body: 'A short sourced artist note.',
+        sourceName: 'Wikipedia',
+        sourceUrl: 'https://example.com/artist',
+      },
+    ],
+    facts: [{ label: 'Genre', value: 'Electronic', sourceName: 'TheAudioDB' }],
+    links: [{ label: 'Wikipedia artist', url: 'https://example.com/artist' }],
+  }),
+});
+
 const createTempStore = async () => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'office-jukebox-'));
   return createSettingsStore(path.join(dir, 'settings.local.json'));
@@ -165,6 +181,31 @@ test('returns Spotify playback state', async () => {
 
   expect(response.body.is_playing).toBe(true);
   expect(spotifyClient.getPlaybackState).toHaveBeenCalled();
+});
+
+test('returns live song enrichment for a track without storing data', async () => {
+  const songInfoClient = createSongInfoStub();
+  const app = createApp({
+    authMiddleware,
+    spotifyClient: createSpotifyStub(),
+    songInfoClient,
+    settingsStore: await createTempStore(),
+    env: { NODE_ENV: 'test', CLIENT_ORIGIN: 'http://localhost:5173' },
+  });
+
+  const track = {
+    name: 'Current Song',
+    artists: [{ name: 'Current Artist' }],
+    external_ids: { isrc: 'USRC17607839' },
+  };
+
+  const response = await request(app)
+    .post('/api/song-info')
+    .send({ track })
+    .expect(200);
+
+  expect(songInfoClient.getSongInfo).toHaveBeenCalledWith(track);
+  expect(response.body.cards[0].title).toBe('Artist Background');
 });
 
 test('sends playback commands to the persisted selected device', async () => {

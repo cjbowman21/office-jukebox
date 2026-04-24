@@ -10,6 +10,7 @@ import {
   getPlayerState,
   getQueue,
   getSelectedDevice,
+  getSongInfo,
   pause,
   play,
   restart,
@@ -26,6 +27,7 @@ vi.mock('./utils/spotifyAPI', () => ({
   getPlayerState: vi.fn(),
   getQueue: vi.fn(),
   getSelectedDevice: vi.fn(),
+  getSongInfo: vi.fn(),
   pause: vi.fn(),
   play: vi.fn(),
   restart: vi.fn(),
@@ -88,6 +90,19 @@ const mockHappyPath = () => {
   getSelectedDevice.mockResolvedValue('');
   getQueue.mockResolvedValue(queue);
   getPlayerState.mockResolvedValue(player);
+  getSongInfo.mockResolvedValue({
+    cards: [
+      {
+        id: 'artist',
+        title: 'Artist Background',
+        body: 'Daft Punk were a French electronic music duo.',
+        sourceName: 'Wikipedia',
+        sourceUrl: 'https://example.com/daft-punk',
+      },
+    ],
+    facts: [{ label: 'Genre', value: 'Electronic', sourceName: 'TheAudioDB' }],
+    links: [{ label: 'Wikipedia artist', url: 'https://example.com/daft-punk' }],
+  });
   saveSelectedDevice.mockResolvedValue({ selectedDeviceId: device.id, device });
   searchTracks.mockResolvedValue([track]);
   addToQueue.mockResolvedValue();
@@ -192,4 +207,18 @@ test('sends playback control commands and volume changes', async () => {
   fireEvent.mouseUp(volume);
 
   await waitFor(() => expect(setVolume).toHaveBeenCalledWith(55));
+});
+
+test('opens the song details panel for the current track', async () => {
+  const user = userEvent.setup();
+
+  render(<App />);
+
+  await screen.findByText(/current song/i);
+  await user.click(screen.getByRole('button', { name: /about this song/i }));
+
+  expect(await screen.findByText(/artist background/i)).toBeInTheDocument();
+  expect(screen.getByText(/daft punk were a french electronic music duo/i)).toBeInTheDocument();
+  expect(screen.getAllByText(/electronic/i).length).toBeGreaterThan(0);
+  expect(getSongInfo).toHaveBeenCalledWith(player.item);
 });

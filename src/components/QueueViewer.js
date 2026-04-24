@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
+import { Info } from 'lucide-react';
 import PlayerControls from './PlayerControls';
+import SongInfoPanel from './SongInfoPanel';
 import { getPlayerState, getQueue } from '../utils/spotifyAPI';
 
 const AUTO_REFRESH_MS = 8000;
@@ -19,6 +21,7 @@ const QueueViewer = ({ refreshToken }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [lastUpdated, setLastUpdated] = useState(null);
+  const [songInfoOpen, setSongInfoOpen] = useState(false);
 
   const loadPlayback = async (silent = false) => {
     if (silent) {
@@ -34,6 +37,9 @@ const QueueViewer = ({ refreshToken }) => {
       ]);
       setQueue(queueData);
       setPlayer(playerData);
+      if (!playerData?.item && !queueData?.currently_playing) {
+        setSongInfoOpen(false);
+      }
       setError('');
       setLastUpdated(new Date());
     } catch (err) {
@@ -108,13 +114,25 @@ const QueueViewer = ({ refreshToken }) => {
           {currentTrack && (
             <p>
               {artistNames(currentTrack)}
-              {player && <span className="playback-state"> · {player.is_playing ? 'Playing' : 'Paused'}</span>}
+              {player && <span className="playback-state"> - {player.is_playing ? 'Playing' : 'Paused'}</span>}
             </p>
           )}
         </div>
-        <button type="button" className="ghost-button" onClick={handleRefresh} disabled={refreshing}>
-          {refreshing ? 'Refreshing' : 'Refresh queue'}
-        </button>
+        <div className="header-actions">
+          {currentTrack && (
+            <button
+              type="button"
+              className="ghost-button icon-text-button"
+              onClick={() => setSongInfoOpen(true)}
+            >
+              <Info size={16} aria-hidden="true" />
+              About this song
+            </button>
+          )}
+          <button type="button" className="ghost-button" onClick={handleRefresh} disabled={refreshing}>
+            {refreshing ? 'Refreshing' : 'Refresh queue'}
+          </button>
+        </div>
       </div>
 
       {currentTrack && (
@@ -165,6 +183,12 @@ const QueueViewer = ({ refreshToken }) => {
       ) : (
         <p className="empty-text">The queue is empty.</p>
       )}
+
+      <SongInfoPanel
+        open={songInfoOpen}
+        track={currentTrack}
+        onClose={() => setSongInfoOpen(false)}
+      />
     </section>
   );
 };
