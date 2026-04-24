@@ -1,68 +1,119 @@
 import axios from 'axios';
 
-const baseURL = process.env.REACT_APP_API_URL;
-if (!baseURL) {
-  console.warn('REACT_APP_API_URL is not set; falling back to current origin.');
-}
+const baseURL = import.meta.env.VITE_API_URL || window.location.origin;
 
 const api = axios.create({
-  baseURL: baseURL || window.location.origin,
+  baseURL,
   withCredentials: true,
 });
 
-const unauthorized = { unauthorized: true };
-const networkError = { networkError: true };
-
-const handleUnauthorized = (error) => {
-  if (error.response && (error.response.status === 401 || error.response.status === 403)) {
-    return unauthorized;
+export class ApiError extends Error {
+  constructor(message, code, status, details) {
+    super(message);
+    this.name = 'ApiError';
+    this.code = code;
+    this.status = status;
+    this.details = details;
   }
-  throw error;
+}
+
+const toApiError = (error, fallbackMessage) => {
+  if (error.response) {
+    const { status, data } = error.response;
+    const isAuthError = status === 401 || status === 403;
+    return new ApiError(
+      data?.error || (isAuthError ? 'Windows authentication did not complete.' : fallbackMessage),
+      data?.code || (isAuthError ? 'UNAUTHORIZED' : 'API_ERROR'),
+      status,
+      data?.details
+    );
+  }
+
+  return new ApiError(
+    'Network error. Check that the Office Jukebox server is running.',
+    'NETWORK_ERROR',
+    null
+  );
+};
+
+const request = async (operation, fallbackMessage) => {
+  try {
+    return await operation();
+  } catch (error) {
+    throw toApiError(error, fallbackMessage);
+  }
+};
+
+export const getMe = async () => {
+  const response = await request(() => api.get('/api/me'), 'Unable to verify Windows session.');
+  return response.data;
 };
 
 export const getQueue = async () => {
-  try {
-    const response = await api.get('/api/queue');
-    return response.data;
-  } catch (error) {
-    if (!error.response) {
-      console.error('Network error fetching queue:', error);
-      return networkError;
-    }
-    try {
-      return handleUnauthorized(error);
-    } catch (err) {
-      console.error('Error fetching queue:', err);
-      return null;
-    }
-  }
+  const response = await request(() => api.get('/api/queue'), 'Failed to load Spotify queue.');
+  return response.data;
+};
+
+export const getPlayerState = async () => {
+  const response = await request(() => api.get('/api/player'), 'Failed to load Spotify playback state.');
+  return response.data;
 };
 
 export const searchTracks = async (query) => {
-  try {
-    const response = await api.get('/api/search', { params: { q: query } });
-    return response.data.tracks || response.data;
-  } catch (error) {
-    const result = handleUnauthorized(error);
-    if (result.unauthorized) {
-      return result;
-    }
-    console.error('Error searching tracks:', error);
-    return [];
-  }
+  const response = await request(
+    () => api.get('/api/search', { params: { q: query } }),
+    'Spotify search failed.'
+  );
+  return response.data.tracks?.items || response.data.tracks || [];
 };
 
 export const addToQueue = async (trackUri) => {
-  try {
-    await api.post('/api/add-to-queue', { uri: trackUri });
-    return true;
-  } catch (error) {
-    const result = handleUnauthorized(error);
-    if (result.unauthorized) {
-      return result;
-    }
-    console.error('Error adding to queue:', error);
-    return false;
-  }
+  await request(
+    () => api.post('/api/add-to-queue', { uri: trackUri }),
+    'Failed to add song to the queue.'
+  );
 };
 
+export const play = async () => {
+  await request(() => api.post('/api/player/play'), 'Failed to start playback.');
+};
+
+export const pause = async () => {
+  await request(() => api.post('/api/player/pause'), 'Failed to pause playback.');
+};
+
+export const restart = async () => {
+  await request(() => api.post('/api/player/restart'), 'Failed to restart the current track.');
+};
+
+export const skip = async () => {
+  await request(() => api.post('/api/player/skip'), 'Failed to skip to the next track.');
+};
+
+export const setVolume = async (volumePercent) => {
+  await request(
+    () => api.put('/api/player/volume', { volumePercent }),
+    'Failed to update playback volume.'
+  );
+};
+
+export const getDevices = async () => {
+  const response = await request(() => api.get('/api/devices'), 'Failed to load Spotify devices.');
+  return response.data.devices || [];
+};
+
+export const getSelectedDevice = async () => {
+  const response = await request(
+    () => api.get('/api/settings/device'),
+    'Failed to load selected Spotify device.'
+  );
+  return response.data.selectedDeviceId || '';
+};
+
+export const saveSelectedDevice = async (deviceId) => {
+  const response = await request(
+    () => api.put('/api/settings/device', { deviceId }),
+    'Failed to save selected Spotify device.'
+  );
+  return response.data;
+};

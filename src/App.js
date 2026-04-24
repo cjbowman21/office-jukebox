@@ -1,57 +1,72 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import MainView from './components/MainView';
-import './App.css';
+import { getMe } from './utils/spotifyAPI';
 
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState('');
 
   useEffect(() => {
+    let active = true;
+
     const checkAuth = async () => {
       try {
-        const response = await fetch('/api/me');
-        if (response.ok) {
-          setIsAuthenticated(true);
-        } else if (response.status === 401 || response.status === 403) {
-          setError('Session expired. Please reauthenticate with Windows.');
-        } else {
-          setError('Unable to verify session.');
+        const profile = await getMe();
+        if (active) {
+          setUser(profile);
+          setError('');
         }
       } catch (err) {
-        setError('Unable to verify session.');
+        if (active) {
+          if (err.status === 401 || err.status === 403) {
+            setError('Windows authentication did not complete. Use Edge or Chrome from a domain-joined Windows session, and open the LAN hostname if localhost is not trusted for integrated authentication.');
+          } else if (err.code === 'NETWORK_ERROR') {
+            setError('Unable to reach the Office Jukebox API. In development, confirm the API is running on port 5000 and VITE_API_URL points to it.');
+          } else {
+            setError(err.message);
+          }
+        }
       } finally {
-        setLoading(false);
+        if (active) {
+          setLoading(false);
+        }
       }
     };
 
     checkAuth();
+    return () => {
+      active = false;
+    };
   }, []);
 
-  if (loading) {
-    return (
-      <div className="App">
-        <header>
-          <h1>Office Jukebox</h1>
-        </header>
-        <main>
-          <p>Loading...</p>
-        </main>
-      </div>
-    );
-  }
-
   return (
-    <div className="App">
-      <header>
-        <h1>Office Jukebox</h1>
+    <div className="app-shell">
+      <header className="app-header">
+        <div>
+          <p className="eyebrow">Office Spotify</p>
+          <h1>Office Jukebox</h1>
+        </div>
+        {user && (
+          <div className="user-pill" title={`${user.domain || ''}\\${user.username || ''}`}>
+            {user.username}
+          </div>
+        )}
       </header>
 
       <main>
-        {isAuthenticated ? (
-          <MainView />
+        {loading ? (
+          <section className="state-panel">
+            <div className="spinner" />
+            <p>Checking Windows session...</p>
+          </section>
+        ) : user ? (
+          <MainView user={user} />
         ) : (
-          <p>{error || 'Please authenticate with Windows to continue.'}</p>
+          <section className="state-panel error-panel">
+            <h2>Authentication needed</h2>
+            <p>{error || 'Please authenticate with Windows to continue.'}</p>
+          </section>
         )}
       </main>
     </div>

@@ -14,3 +14,4 @@ yarn-error.log*
 build/
 dist/
 coverage/
+server/settings.local.json

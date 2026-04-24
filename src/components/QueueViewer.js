@@ -1,97 +1,171 @@
-import React, { useState, useEffect } from 'react';
-import { getQueue } from '../utils/spotifyAPI';
+import React, { useEffect, useState } from 'react';
+import PlayerControls from './PlayerControls';
+import { getPlayerState, getQueue } from '../utils/spotifyAPI';
 
-const QueueViewer = () => {
+const AUTO_REFRESH_MS = 8000;
+
+const formatDuration = (durationMs = 0) => {
+  const minutes = Math.floor(durationMs / 60000);
+  const seconds = Math.round((durationMs % 60000) / 1000).toString().padStart(2, '0');
+  return `${minutes}:${seconds}`;
+};
+
+const artistNames = (track) => track?.artists?.map((artist) => artist.name).join(', ') || 'Unknown artist';
+
+const QueueViewer = ({ refreshToken }) => {
   const [queue, setQueue] = useState(null);
+  const [player, setPlayer] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [lastUpdated, setLastUpdated] = useState(Date.now());
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState('');
+  const [lastUpdated, setLastUpdated] = useState(null);
+
+  const loadPlayback = async (silent = false) => {
+    if (silent) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
+
+    try {
+      const [queueData, playerData] = await Promise.all([
+        getQueue(),
+        getPlayerState(),
+      ]);
+      setQueue(queueData);
+      setPlayer(playerData);
+      setError('');
+      setLastUpdated(new Date());
+    } catch (err) {
+      setError(err.code === 'SPOTIFY_QUEUE_FAILED'
+        ? 'Failed to load queue. Make sure Spotify is playing on the office account.'
+        : err.message);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchQueue = async () => {
-      try {
-        const queueData = await getQueue();
-        if (queueData && queueData.unauthorized) {
-          setError('Session expired. Please reauthenticate with Windows.');
-        } else if (queueData && queueData.networkError) {
-          setError('Network error. Please check your connection and try again.');
-        } else if (queueData) {
-          setQueue(queueData);
-        } else {
-          setError('Failed to load queue. Make sure Spotify is playing.');
-        }
-      } catch (err) {
-        setError('Error fetching queue. Please try again.');
-      } finally {
-        setLoading(false);
+    let active = true;
+    let intervalId;
+
+    const fetchQueue = async (silent = false) => {
+      if (!active) {
+        return;
       }
+      await loadPlayback(silent);
     };
 
-    fetchQueue();
-  }, [lastUpdated]);
+    fetchQueue(false);
+    intervalId = window.setInterval(() => fetchQueue(true), AUTO_REFRESH_MS);
+
+    return () => {
+      active = false;
+      window.clearInterval(intervalId);
+    };
+  }, [refreshToken]);
+
+  const handleRefresh = async () => {
+    await loadPlayback(true);
+  };
+
+  const handlePlaybackCommand = async () => {
+    await loadPlayback(true);
+  };
 
   if (loading) {
-    return <div className="loading">Loading your queue...</div>;
+    return (
+      <section className="queue-section state-panel">
+        <div className="spinner" />
+        <p>Loading queue...</p>
+      </section>
+    );
   }
 
   if (error) {
-    return <div className="error">{error}</div>;
+    return (
+      <section className="queue-section state-panel error-panel">
+        <h2>Queue unavailable</h2>
+        <p>{error}</p>
+        <button type="button" onClick={handleRefresh}>Retry</button>
+      </section>
+    );
   }
 
-  if (!queue) {
-    return <div className="empty">No queue data available</div>;
-  }
+  const currentTrack = player?.item || queue?.currently_playing;
+  const upcoming = queue?.queue || [];
+  const progressMs = player?.progress_ms || 0;
+  const durationMs = currentTrack?.duration_ms || 0;
+  const progressPercent = durationMs > 0 ? Math.min(100, (progressMs / durationMs) * 100) : 0;
 
   return (
-    <div className="queue-container">
-      <h2>Now Playing</h2>
-      {queue.currently_playing ? (
-        <div className="now-playing">
-          <div className="track-info">
-            <h3>{queue.currently_playing.name}</h3>
-            <p className="artists">
-              {queue.currently_playing.artists.map(artist => artist.name).join(', ')}
+    <section className="queue-section" aria-live="polite">
+      <div className="section-header">
+        <div>
+          <p className="eyebrow">Now playing</p>
+          <h2>{currentTrack ? currentTrack.name : 'Nothing is playing'}</h2>
+          {currentTrack && (
+            <p>
+              {artistNames(currentTrack)}
+              {player && <span className="playback-state"> · {player.is_playing ? 'Playing' : 'Paused'}</span>}
             </p>
-            <p className="album">{queue.currently_playing.album.name}</p>
-          </div>
-          {queue.currently_playing.album.images[0] && (
-            <img 
-              src={queue.currently_playing.album.images[0].url} 
-              alt="Album cover" 
-              className="album-cover"
-            />
           )}
         </div>
-      ) : (
-        <p>Nothing currently playing</p>
+        <button type="button" className="ghost-button" onClick={handleRefresh} disabled={refreshing}>
+          {refreshing ? 'Refreshing' : 'Refresh queue'}
+        </button>
+      </div>
+
+      {currentTrack && (
+        <div className="now-playing">
+          {currentTrack.album?.images?.[0] && (
+            <img src={currentTrack.album.images[0].url} alt="" className="album-cover" />
+          )}
+          <div className="now-playing-copy">
+            <h3>{currentTrack.album?.name}</h3>
+            <p className="muted">
+              {formatDuration(progressMs)} / {formatDuration(durationMs)}
+            </p>
+            <div className="progress-track" aria-label="Playback progress">
+              <span style={{ width: `${progressPercent}%` }} />
+            </div>
+          </div>
+        </div>
       )}
 
-      <h2>Up Next</h2>
-      <button onClick={() => setLastUpdated(Date.now())} className="refresh-btn">
-      Refresh Queue
-    </button>
-      {queue.queue && queue.queue.length > 0 ? (
-        <ul className="queue-list">
-          {queue.queue.map((track, index) => (
-            <li key={index} className="queue-item">
-              <div className="track-info">
-                <span className="track-number">{index + 1}.</span>
+      <PlayerControls
+        player={player}
+        disabled={false}
+        onCommand={handlePlaybackCommand}
+        onError={(err) => setError(err.message)}
+      />
+
+      <div className="section-header compact">
+        <div>
+          <p className="eyebrow">Up next</p>
+          <h2>{upcoming.length} queued</h2>
+        </div>
+        {lastUpdated && <p className="updated-note">Updated {lastUpdated.toLocaleTimeString()}</p>}
+      </div>
+
+      {upcoming.length > 0 ? (
+        <ol className="queue-list">
+          {upcoming.map((track, index) => (
+            <li key={`${track.uri}-${index}`} className="queue-item">
+              <span className="queue-index">{index + 1}</span>
+              <span className="track-copy">
                 <span className="track-name">{track.name}</span>
-                <span className="track-artists">
-                  {track.artists.map(artist => artist.name).join(', ')}
-                </span>
-              </div>
-              <span className="track-duration">
-                {Math.floor(track.duration_ms / 60000)}:
-                {((track.duration_ms % 60000) / 1000).toFixed(0).padStart(2, '0')}
+                <span className="track-artist">{artistNames(track)}</span>
               </span>
+              <span className="track-duration">{formatDuration(track.duration_ms)}</span>
             </li>
           ))}
-        </ul>
+        </ol>
       ) : (
-        <p>Your queue is empty</p>
+        <p className="empty-text">The queue is empty.</p>
       )}
-    </div>
+    </section>
   );
 };
 

@@ -1,83 +1,63 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { searchTracks } from '../utils/spotifyAPI';
 
-const AutoCompleteSearch = ({ onAddToQueue }) => {
+const formatDuration = (durationMs) => {
+  const minutes = Math.floor(durationMs / 60000);
+  const seconds = Math.round((durationMs % 60000) / 1000).toString().padStart(2, '0');
+  return `${minutes}:${seconds}`;
+};
+
+const AutoCompleteSearch = ({ onAddToQueue, onError }) => {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const [showResults, setShowResults] = useState(false);
+  const [pendingUri, setPendingUri] = useState('');
   const searchRef = useRef(null);
 
-  // Debounce search to avoid excessive API calls
   useEffect(() => {
-    if (!query.trim()) {
+    const trimmedQuery = query.trim();
+
+    if (!trimmedQuery) {
       setResults([]);
       setShowResults(false);
-      return;
+      setIsLoading(false);
+      return undefined;
     }
 
+    let active = true;
     setIsLoading(true);
     setShowResults(true);
-    
-    const delayDebounce = setTimeout(async () => {
+
+    const delayDebounce = window.setTimeout(async () => {
       try {
-        const searchResults = await searchTracks(query);
-        if (searchResults && searchResults.unauthorized) {
-          alert('Session expired. Please reauthenticate with Windows.');
-          setResults([]);
-          setShowResults(false);
-        } else {
-          setResults(searchResults);
+        const tracks = await searchTracks(trimmedQuery);
+        if (active) {
+          setResults(tracks);
           setActiveIndex(-1);
         }
       } catch (error) {
-        console.error('Search error:', error);
-        setResults([]);
+        if (active) {
+          setResults([]);
+          onError?.(error);
+        }
       } finally {
-        setIsLoading(false);
+        if (active) {
+          setIsLoading(false);
+        }
       }
     }, 300);
 
-    return () => clearTimeout(delayDebounce);
-  }, [query]);
-
-  // Handle keyboard navigation
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (!showResults) return;
-      
-      switch (e.key) {
-        case 'ArrowDown':
-          e.preventDefault();
-          setActiveIndex(prev => Math.min(prev + 1, results.length - 1));
-          break;
-        case 'ArrowUp':
-          e.preventDefault();
-          setActiveIndex(prev => Math.max(prev - 1, -1));
-          break;
-        case 'Enter':
-          e.preventDefault();
-          if (activeIndex >= 0 && activeIndex < results.length) {
-            handleSelect(results[activeIndex]);
-          }
-          break;
-        case 'Escape':
-          setShowResults(false);
-          break;
-        default:
-          break;
-      }
+    return () => {
+      active = false;
+      window.clearTimeout(delayDebounce);
     };
+  }, [query, onError]);
 
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [showResults, results, activeIndex]);
-
-  // Close dropdown when clicking outside
   useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (searchRef.current && !searchRef.current.contains(e.target)) {
+    const handleClickOutside = (event) => {
+      if (searchRef.current && !searchRef.current.contains(event.target)) {
         setShowResults(false);
       }
     };
@@ -86,82 +66,95 @@ const AutoCompleteSearch = ({ onAddToQueue }) => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleSelect = (track) => {
-    onAddToQueue(track.uri);
-    setQuery('');
-    setResults([]);
-    setShowResults(false);
+  const handleSelect = async (track) => {
+    setPendingUri(track.uri);
+    try {
+      const added = await onAddToQueue(track.uri);
+      if (added !== false) {
+        setQuery('');
+        setResults([]);
+        setShowResults(false);
+      }
+    } finally {
+      setPendingUri('');
+    }
   };
 
-  const handleInputChange = (e) => {
-    setQuery(e.target.value);
-    setShowResults(true);
+  const handleKeyDown = (event) => {
+    if (!showResults) {
+      return;
+    }
+
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      setActiveIndex((current) => Math.min(current + 1, results.length - 1));
+    }
+
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      setActiveIndex((current) => Math.max(current - 1, -1));
+    }
+
+    if (event.key === 'Enter' && activeIndex >= 0 && activeIndex < results.length) {
+      event.preventDefault();
+      handleSelect(results[activeIndex]);
+    }
+
+    if (event.key === 'Escape') {
+      setShowResults(false);
+    }
   };
 
   return (
-    <div className="auto-complete-container" ref={searchRef}>
-      <div className="search-input-container">
+    <div className="search-panel" ref={searchRef}>
+      <label htmlFor="track-search">Add a song</label>
+      <div className="search-input-wrap">
         <input
-          type="text"
+          id="track-search"
+          type="search"
           value={query}
-          onChange={handleInputChange}
-          placeholder="Search songs, artists..."
-          className="search-input"
-          onFocus={() => setShowResults(true)}
+          onChange={(event) => {
+            setQuery(event.target.value);
+            setShowResults(true);
+          }}
+          onFocus={() => query && setShowResults(true)}
+          onKeyDown={handleKeyDown}
+          placeholder="Search songs or artists"
+          autoComplete="off"
         />
-        {isLoading && (
-          <div className="search-spinner">
-            <div className="spinner"></div>
-          </div>
-        )}
+        {isLoading && <div className="spinner small" aria-label="Searching" />}
       </div>
 
-      {showResults && query && (
-        <div className="search-results-dropdown">
+      {showResults && query.trim() && (
+        <div className="search-results-dropdown" role="listbox" aria-label="Spotify search results">
           {isLoading ? (
-            <div className="dropdown-item">
-              <div className="spinner small"></div>
-              <span>Searching...</span>
-            </div>
+            <div className="dropdown-row muted">Searching Spotify...</div>
           ) : results.length === 0 ? (
-            <div className="dropdown-item no-results">
-              No results found for "{query}"
-            </div>
+            <div className="dropdown-row muted">No results found for "{query}"</div>
           ) : (
             results.map((track, index) => (
-              <div
+              <button
+                type="button"
                 key={track.id}
-                className={`dropdown-item ${index === activeIndex ? 'active' : ''}`}
+                className={`dropdown-row result-row ${index === activeIndex ? 'active' : ''}`}
                 onClick={() => handleSelect(track)}
                 onMouseEnter={() => setActiveIndex(index)}
+                disabled={Boolean(pendingUri)}
               >
-                <div className="track-image">
-                  {track.album.images[0] ? (
-                    <img 
-                      src={track.album.images[0].url} 
-                      alt={track.name} 
-                    />
+                <span className="track-image">
+                  {track.album?.images?.[0] ? (
+                    <img src={track.album.images[0].url} alt="" />
                   ) : (
-                    <div className="image-placeholder">
-                      <svg viewBox="0 0 24 24" width="24" height="24">
-                        <path fill="currentColor" d="M6 3l14 9-14 9V3z" />
-                      </svg>
-                    </div>
+                    <span className="image-placeholder" />
                   )}
-                </div>
-                
-                <div className="track-info">
-                  <div className="track-name">{track.name}</div>
-                  <div className="track-artist">
-                    {track.artists.map(artist => artist.name).join(', ')}
-                  </div>
-                </div>
-                
-                <div className="track-duration">
-                  {Math.floor(track.duration_ms / 60000)}:
-                  {((track.duration_ms % 60000) / 1000).toFixed(0).padStart(2, '0')}
-                </div>
-              </div>
+                </span>
+                <span className="track-copy">
+                  <span className="track-name">{track.name}</span>
+                  <span className="track-artist">{track.artists.map((artist) => artist.name).join(', ')}</span>
+                </span>
+                <span className="track-duration">{formatDuration(track.duration_ms)}</span>
+                <span className="add-label">{pendingUri === track.uri ? 'Adding' : 'Add'}</span>
+              </button>
             ))
           )}
         </div>
