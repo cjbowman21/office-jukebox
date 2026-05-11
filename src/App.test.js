@@ -222,3 +222,88 @@ test('opens the song details panel for the current track', async () => {
   expect(screen.getAllByText(/electronic/i).length).toBeGreaterThan(0);
   expect(getSongInfo).toHaveBeenCalledWith(player.item);
 });
+
+describe('ordinal calendar tab', () => {
+  let clipboardWriteText;
+
+  const renderCalendarTab = async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await screen.findByText(/current song/i);
+    await user.click(screen.getByRole('button', { name: /calendar/i }));
+
+    return user;
+  };
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 4, 11, 9, 30, 0));
+    if (!navigator.clipboard) {
+      Object.defineProperty(navigator, 'clipboard', {
+        value: {
+          writeText: async () => {},
+        },
+        configurable: true,
+      });
+    }
+    clipboardWriteText = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue();
+  });
+
+  afterEach(() => {
+    clipboardWriteText?.mockRestore();
+    vi.useRealTimers();
+  });
+
+  test('opens from the Calendar tab and shows today as a full ordinal date', async () => {
+    await renderCalendarTab();
+
+    expect(screen.getByRole('heading', { name: /day-of-year calendar/i })).toBeInTheDocument();
+    expect(screen.getByText(/monday, may 11, 2026/i)).toBeInTheDocument();
+    expect(screen.getByText('2026131')).toBeInTheDocument();
+  });
+
+  test('updates the visible calendar year with year controls', async () => {
+    const user = await renderCalendarTab();
+
+    expect(screen.getByRole('heading', { name: /january 2026/i })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /next year/i }));
+
+    expect(screen.getByRole('heading', { name: /january 2027/i })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: /january 2026/i })).not.toBeInTheDocument();
+  });
+
+  test('renders day 366 for leap years', async () => {
+    const user = await renderCalendarTab();
+
+    await user.click(screen.getByRole('button', { name: /previous year/i }));
+    await user.click(screen.getByRole('button', { name: /previous year/i }));
+
+    expect(screen.getByRole('heading', { name: /december 2024/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/tuesday, december 31, 2024, ordinal date 2024366/i)).toBeInTheDocument();
+  });
+
+  test('updates the selected date summary when a calendar date is clicked', async () => {
+    const user = await renderCalendarTab();
+
+    await user.click(screen.getByRole('button', {
+      name: /friday, july 3, 2026, ordinal date 2026184/i,
+    }));
+
+    expect(screen.getByText(/friday, july 3, 2026/i)).toBeInTheDocument();
+    expect(screen.getByText('2026184')).toBeInTheDocument();
+  });
+
+  test('copies the selected ordinal date to the clipboard', async () => {
+    const user = await renderCalendarTab();
+
+    await user.click(screen.getByRole('button', {
+      name: /friday, july 3, 2026, ordinal date 2026184/i,
+    }));
+    await user.click(screen.getByRole('button', { name: /copy ordinal date 2026184/i }));
+
+    expect(clipboardWriteText).toHaveBeenCalledWith('2026184');
+    expect(await screen.findByRole('button', { name: /copy ordinal date 2026184/i })).toHaveTextContent(/copied/i);
+  });
+});

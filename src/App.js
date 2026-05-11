@@ -1,11 +1,14 @@
 import React, { useEffect, useState } from 'react';
+import { CalendarDays, Music2 } from 'lucide-react';
 import MainView from './components/MainView';
+import OrdinalCalendar from './components/OrdinalCalendar';
 import { getMe } from './utils/spotifyAPI';
 
 function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [activeView, setActiveView] = useState('spotify');
 
   useEffect(() => {
     let active = true;
@@ -61,7 +64,29 @@ function App() {
             <p>Checking Windows session...</p>
           </section>
         ) : user ? (
-          <MainView user={user} />
+          <>
+            <nav className="app-tabs" aria-label="Office Jukebox views">
+              <button
+                type="button"
+                className={`tab-button ${activeView === 'spotify' ? 'active' : ''}`}
+                onClick={() => setActiveView('spotify')}
+                aria-pressed={activeView === 'spotify'}
+              >
+                <Music2 size={17} aria-hidden="true" />
+                Spotify
+              </button>
+              <button
+                type="button"
+                className={`tab-button ${activeView === 'calendar' ? 'active' : ''}`}
+                onClick={() => setActiveView('calendar')}
+                aria-pressed={activeView === 'calendar'}
+              >
+                <CalendarDays size={17} aria-hidden="true" />
+                Calendar
+              </button>
+            </nav>
+            {activeView === 'spotify' ? <MainView user={user} /> : <OrdinalCalendar />}
+          </>
         ) : (
           <section className="state-panel error-panel">
             <h2>Authentication needed</h2>

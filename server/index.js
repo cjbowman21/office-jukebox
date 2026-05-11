@@ -263,9 +263,10 @@ function createApp({
 } = {}) {
   const app = express();
   const clientOrigin = env.CLIENT_ORIGIN || 'http://localhost:5173';
+  const corsOrigins = clientOrigin.split(',').map((origin) => origin.trim()).filter(Boolean);
 
   app.use(express.json());
-  app.use(cors({ origin: clientOrigin, credentials: true }));
+  app.use(cors({ origin: corsOrigins, credentials: true }));
   app.use('/api', authMiddleware || createNtlmMiddleware(env));
 
   app.get('/api/me', ensureAuthenticated, (req, res) => {

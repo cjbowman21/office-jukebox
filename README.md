@@ -69,8 +69,9 @@ npm run dev
 ```
 
 - Express listens on `http://localhost:5000`.
-- Vite listens on `http://localhost:5173`.
+- Vite listens on `http://localhost:5173` and the workstation LAN IP.
 - For Windows auth testing, use a domain-joined Windows browser. The recommended dev setup is an ignored `.env.development.local` file with `VITE_API_URL=http://localhost:5000` so the browser authenticates directly with the API instead of through Vite's proxy.
+- For coworker LAN testing in dev, use this workstation's LAN IP in both values, for example `CLIENT_ORIGIN=http://localhost:5173,http://192.168.1.83:5173` and `VITE_API_URL=http://192.168.1.83:5000`.
 - If integrated auth does not complete on `localhost`, try the machine hostname, for example `http://YOUR-PC-NAME:5000`, and make sure the address is trusted for Windows Integrated Authentication in Edge/Chrome.
 
 ## Production LAN Hosting
